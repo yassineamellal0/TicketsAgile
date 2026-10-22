@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Générateur de tickets Agile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<style>
+:root{
+  --navy:#16325C; --ink:#0F1E36; --paper:#F2F5FA; --card:#FFFFFF; --line:#DCE3EE;
+  --violet:#5B3FE8; --violet-d:#4529C9; --mint:#12A37F; --mint-d:#0C8566; --muted:#5E6C84; --danger:#C93B4B;
+  --font:'Manrope','Segoe UI',system-ui,sans-serif; --mono:'JetBrains Mono',ui-monospace,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--font);background:var(--paper);color:var(--ink);line-height:1.55;min-height:100vh}
+.hero{background:var(--navy);color:#fff;padding:52px 24px 92px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:auto -10% -60% 40%;height:420px;background:radial-gradient(closest-side,rgba(91,63,232,.55),transparent);pointer-events:none}
+.wrap{max-width:1040px;margin:0 auto;position:relative;z-index:1}
+h1{font-size:clamp(28px,4.4vw,46px);line-height:1.1;font-weight:800;letter-spacing:-.02em;margin:0;max-width:20ch}
+.hero p{margin:0;max-width:56ch;color:#C5D2E8;font-size:17px}
+main{max-width:1040px;margin:-56px auto 56px;padding:0 24px;position:relative;z-index:2;display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:24px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 18px 40px -22px rgba(22,50,92,.35)}
+.card h2{font-size:18px;margin:0 0 4px;font-weight:800}
+.card .sub{margin:0 0 20px;color:var(--muted);font-size:14px}
+.drop{border:2px dashed #B5C2D9;border-radius:14px;padding:34px 20px;text-align:center;cursor:pointer;transition:background .2s,border-color .2s;background:#F8FAFD;display:block}
+.drop:hover,.drop.over{border-color:var(--violet);background:#F1EEFF}
+.drop:focus-within{outline:3px solid rgba(91,63,232,.35);outline-offset:2px}
+.drop input{position:absolute;opacity:0;width:1px;height:1px}
+.drop svg{width:40px;height:40px;stroke:var(--violet)}
+.drop strong{display:block;margin-top:8px;font-size:16px}
+.drop span{color:var(--muted);font-size:13px}
+.file{display:none;align-items:center;gap:12px;margin-top:14px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:#fff}
+.file.on{display:flex}
+.file b{display:block;font-size:14px;word-break:break-all}
+.file small{color:var(--muted)}
+.badge{flex:none;width:38px;height:38px;border-radius:10px;background:var(--mint);color:#fff;display:grid;place-items:center;font-weight:800;font-size:12px}
+.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
+button{font:600 15px var(--font);border:0;border-radius:12px;padding:13px 22px;cursor:pointer;transition:transform .15s,background .2s,box-shadow .2s;display:inline-flex;align-items:center;gap:8px}
+button:focus-visible{outline:3px solid rgba(91,63,232,.45);outline-offset:2px}
+button:disabled{opacity:.4;cursor:not-allowed}
+button:not(:disabled):active{transform:scale(.97)}
+.run{background:var(--violet);color:#fff;box-shadow:0 10px 20px -10px var(--violet)}
+.run:not(:disabled):hover{background:var(--violet-d)}
+.clear{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.clear:not(:disabled):hover{border-color:var(--danger);color:var(--danger)}
+.dl{background:var(--mint);color:#fff;width:100%;justify-content:center;margin-top:18px;padding:15px}
+.dl:not(:disabled):hover{background:var(--mint-d)}
+.bar{height:8px;background:#E7ECF4;border-radius:99px;overflow:hidden;margin-top:20px;display:none}
+.bar.on{display:block}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--violet),var(--mint));transition:width .15s}
+.status{min-height:22px;margin:12px 0 0;font-size:14px;color:var(--muted)}
+.status.err{color:var(--danger);font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.stat{border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat b{display:block;font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.stat small{color:var(--muted);font-size:12px}
+.ticket{position:relative;background:#0F1E36;color:#DDE7F7;border-radius:14px;padding:18px 18px 18px 22px;font:13px/1.65 var(--mono);white-space:pre-wrap;word-break:break-word;max-height:260px;overflow:auto;min-height:150px}
+.ticket::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--violet);border-radius:14px 0 0 14px}
+.ticket.empty{color:#7F90AD;font-family:var(--font);font-size:14px}
+.cols{margin-top:14px;font-size:13px;color:var(--muted)}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pick .drop{padding:28px 12px}
+.drop.paste{font:inherit;color:inherit;width:100%;border-radius:14px;gap:0}
+.drop.paste:not(:disabled):active{transform:none}
+.drop.paste.armed{border-color:var(--mint);background:#EAF8F3}
+.drop.paste.armed svg{stroke:var(--mint)}
+@media (max-width:520px){.pick{grid-template-columns:1fr}}
+@media (max-width:820px){main{grid-template-columns:1fr}.hero{padding-bottom:84px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <h1>Générateur de tickets Agile</h1>
+  </div>
+</header>
+
+<main>
+  <section class="card" aria-labelledby="t1">
+    <h2 id="t1">Votre classeur</h2>
+    <p class="sub">Format .xlsx avec Feuil1 (données) et, si besoin, Feuil2 (modèle). Déposez le fichier ou collez-le.</p>
+    <div class="pick">
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept=".xlsx">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0 4 4m-4-4L8 8"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <strong>Déposez le fichier ici</strong>
+      <span>ou cliquez pour le choisir</span>
+    </label>
+    <button type="button" class="drop paste" id="paste">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></svg>
+      <strong>Collez le fichier</strong>
+      <span>Ctrl+V (⌘+V sur Mac)</span>
+    </button>
+    </div>
+    <div class="file" id="fileInfo"><div class="badge">XLS</div><div><b id="fname"></b><small id="fmeta"></small></div></div>
+    <div class="bar" id="bar"><i id="barFill"></i></div>
+    <div class="actions">
+      <button class="run" id="run" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5z"/></svg>
+        Lancer
+      </button>
+      <button class="clear" id="clear" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 7h14M10 11v6m4-6v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></svg>
+        Effacer
+      </button>
+    </div>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </section>
+
+  <section class="card" aria-labelledby="t2">
+    <h2 id="t2">Résultat</h2>
+    <p class="sub">Aperçu de la première description générée.</p>
+    <div class="stats">
+      <div class="stat"><b id="sRows">0</b><small>lignes traitées</small></div>
+      <div class="stat"><b id="sErr">0</b><small>avec message d’erreur</small></div>
+      <div class="stat"><b id="sSheet">0</b><small>lignes en Feuil2</small></div>
+    </div>
+    <div class="ticket empty" id="preview">Le texte généré apparaîtra ici après avoir cliqué sur Lancer.</div>
+    <button class="dl" id="dl" disabled>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12m0 0 4-4m-4 4-4-4"/><path d="M4 18v1a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-1"/></svg>
+      Télécharger le fichier
+    </button>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ---------- Paramètres ---------- */
+const COL = {
+  order: 'vlocity_cmt__OrchestrationPlanId__r.vlocity_cmt__OrderId__r.OrderNumber',
+  id: 'Id', name: 'Name', resp: 'vlocity_cmt__Response__c', desc: 'InwiB2C_Description__c'
+};
+const DEFAULT_TEMPLATE =
+  "merci de finaliser la commande en statut activation\n" +
+  "commande: " + COL.order + "\n" +
+  "id step en échéc: Id\n" +
+  "step en échéc: Name\n" +
+  "message d'erreur: " + COL.resp;
+const LONG_LIMIT = 500;   // au-delà de ce nombre de caractères, le message d'erreur est raccourci
+/* Message long : on ne garde que la partie à partir de "message" (le reste est le payload / les en-têtes).
+   Message court, ou sans clé "message" : conservé tel quel. */
+function trimResp(raw){
+  const s = String(raw || '');
+  if (s.length <= LONG_LIMIT) return s;
+  const i = s.indexOf('"message"');
+  return i === -1 ? s : s.slice(i);
+}
+const TOKEN = /(commande: )vlocity_cmt__OrchestrationPlanId__r\.vlocity_cmt__OrderId__r\.OrderNumber|(id step en échéc: )Id\b|(step en échéc: )Name\b|(message d'erreur: )vlocity_cmt__Response__c/g;
+
+/* Modèle de Feuil2 utilisé si le classeur n'en contient pas (colonne A = description). */
+const S2_HEADERS = ['InwiB2C_Description__c','Name','Feature__c','InwiB2C_Epic__c','InwiB2C_Statut__c','Typologie__c','Type_de_l_offre__c','InwiB2C_Gravite__c','Entit_responsable_de_la_correction__c','En_cours_chez_l_entit__c','Priorite__c','Recurrence__c','InwiB2C_Environnement__c','Support_SI__c','InwiB2C_Process_Rattrapage__c'];
+const S2_DEFAULTS = ['', 'retard d’achèvement','a7RKD00000000hp2AA','a60KD000000CaZuYAK','Nouveau','Rattrapage','Post payé','Mineure','Atos Salesforce','Atos Salesforce','Elevée','Systématique','Prod','true','Helpdesk et Assistance'];
+
+/* ---------- Éléments ---------- */
+const $ = id => document.getElementById(id);
+const el = {file:$('file'),drop:$('drop'),info:$('fileInfo'),fname:$('fname'),fmeta:$('fmeta'),run:$('run'),clear:$('clear'),dl:$('dl'),
+  status:$('status'),bar:$('bar'),fill:$('barFill'),prev:$('preview'),sRows:$('sRows'),sErr:$('sErr'),sSheet:$('sSheet')};
+let source = null, resultBuffer = null, outName = 'resultat.xlsx';
+
+function say(msg, isErr){ el.status.textContent = msg; el.status.className = 'status' + (isErr ? ' err' : ''); }
+function txt(v){
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'object'){
+    if (v.richText) return v.richText.map(t => t.text).join('');
+    if (v.result !== undefined) return txt(v.result);
+    if (v.text !== undefined) return txt(v.text);
+    if (v instanceof Date) return v.toISOString();
+  }
+  return String(v);
+}
+/* Texte d'une cellule ; un nombre au format 0000… (zéros initiaux) garde ses zéros */
+function cellTxt(cell){
+  const v = cell.value;
+  if (typeof v === 'number' && /^0+$/.test(cell.numFmt || '')) return String(v).padStart(cell.numFmt.length, '0');
+  return txt(v);
+}
+const clone = o => JSON.parse(JSON.stringify(o || {}));
+const tick = () => new Promise(r => setTimeout(r, 0));
+
+/* ---------- Import ---------- */
+function loadFile(f){
+  if (!f) return;
+  if (!/\.xlsx$/i.test(f.name)){ say('Format non pris en charge : choisissez un fichier .xlsx.', true); return; }
+  source = f; resultBuffer = null; outName = f.name.replace(/\.xlsx$/i, '') + '_final.xlsx';
+  el.fname.textContent = f.name;
+  el.fmeta.textContent = (f.size / 1024).toFixed(0) + ' Ko';
+  el.info.classList.add('on');
+  el.run.disabled = false; el.clear.disabled = false; el.dl.disabled = true;
+  resetResult(); say('Fichier prêt. Cliquez sur Lancer pour générer les descriptions.');
+}
+el.file.addEventListener('change', e => loadFile(e.target.files[0]));
+['dragenter','dragover'].forEach(t => el.drop.addEventListener(t, e => { e.preventDefault(); el.drop.classList.add('over'); }));
+['dragleave','drop'].forEach(t => el.drop.addEventListener(t, e => { e.preventDefault(); el.drop.classList.remove('over'); }));
+el.drop.addEventListener('drop', e => loadFile(e.dataTransfer.files[0]));
+
+/* ---------- Coller (Ctrl+V) ---------- */
+const pasteBtn = $('paste');
+pasteBtn.addEventListener('click', () => { pasteBtn.classList.add('armed'); say('Prêt : appuyez sur Ctrl+V (⌘+V sur Mac) pour coller le fichier.'); });
+pasteBtn.addEventListener('blur', () => pasteBtn.classList.remove('armed'));
+
+function parseTSV(t){
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < t.length; i++){
+    const ch = t[i];
+    if (q){ if (ch === '"'){ if (t[i + 1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if (ch === '"' && cur === '') q = true;
+    else if (ch === '\t'){ row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r'){ if (ch === '\r' && t[i + 1] === '\n') i++; row.push(cur); rows.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if (cur !== '' || row.length){ row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(c => c !== ''));
+}
+async function fromText(text){
+  const rows = parseTSV(text);
+  if (rows.length < 2 || ![COL.order, COL.id, COL.name, COL.resp].every(k => rows[0].map(h => h.trim()).includes(k))){
+    say('Contenu collé non reconnu : copiez les cellules avec la ligne d’en-têtes, ou collez un fichier .xlsx.', true); return;
+  }
+  const wb = new ExcelJS.Workbook(), ws = wb.addWorksheet('Feuil1');
+  rows.forEach(r => ws.addRow(r.map(c => c.trim() === '' ? null : c)));
+  const buf = await wb.xlsx.writeBuffer();
+  loadFile(new File([buf], 'donnees_collees.xlsx'));
+}
+document.addEventListener('paste', e => {
+  const cd = e.clipboardData; if (!cd) return;
+  if (cd.files && cd.files.length){ e.preventDefault(); loadFile(cd.files[0]); return; }
+  const t = cd.getData('text/plain');
+  if (t && t.includes('\t')){ e.preventDefault(); fromText(t); }
+});
+
+/* ---------- Génération ---------- */
+el.run.addEventListener('click', async () => {
+  if (!source) return;
+  el.run.disabled = true; el.clear.disabled = true; el.dl.disabled = true;
+  el.bar.classList.add('on'); el.fill.style.width = '0%'; say('Lecture du classeur…');
+  try {
+    const wb = new ExcelJS.Workbook();
+    await wb.xlsx.load(await source.arrayBuffer());
+    const ws1 = wb.worksheets[0];
+    if (!ws1) throw new Error('Le classeur ne contient aucune feuille.');
+
+    // Repérage des colonnes par leur en-tête
+    const idx = {}, hdr = ws1.getRow(1);
+    hdr.eachCell({includeEmpty:false}, (c, n) => { idx[txt(c.value).trim()] = n; });
+    const missing = [COL.order, COL.id, COL.name, COL.resp].filter(k => !idx[k]);
+    if (missing.length) throw new Error('Colonne(s) introuvable(s) en ligne 1 : ' + missing.join(', '));
+    if (!idx[COL.desc]){ idx[COL.desc] = Math.max(...Object.values(idx)) + 1; hdr.getCell(idx[COL.desc]).value = COL.desc; }
+    const dCol = idx[COL.desc];
+
+    // Modèle du texte : I2 s'il contient les repères, sinon modèle par défaut
+    const c2 = ws1.getRow(2).getCell(dCol);
+    const own = txt(c2.value);
+    const template = own.includes(COL.resp) ? own : DEFAULT_TEMPLATE;
+    const descStyle = c2.style && Object.keys(c2.style).length ? clone(c2.style) : {alignment:{wrapText:true,vertical:'top'}};
+
+    // Génération Feuil1
+    const results = []; let errCount = 0;
+    const last = ws1.rowCount;
+    for (let r = 2; r <= last; r++){
+      const row = ws1.getRow(r);
+      const v = {
+        order: cellTxt(row.getCell(idx[COL.order])), id: txt(row.getCell(idx[COL.id]).value),
+        name: txt(row.getCell(idx[COL.name]).value), resp: trimResp(txt(row.getCell(idx[COL.resp]).value))
+      };
+      if (!v.order && !v.id && !v.name && !v.resp) continue;
+      const out = template.replace(TOKEN, (m, a, b, c, d) =>
+        a ? a + v.order : b ? b + v.id : c ? c + v.name : d + v.resp);
+      const cell = row.getCell(dCol); cell.value = out; cell.style = clone(descStyle);
+      results.push(out);
+      const rv = v.resp.trim(); if (rv && rv !== '{}') errCount++;
+      if (r % 20 === 0){ el.fill.style.width = Math.round((r / last) * 80) + '%'; await tick(); }
+    }
+    if (!results.length) throw new Error('Aucune ligne de données à traiter.');
+
+    // Feuil2 : conserve le modèle (ligne 2) et le duplique pour chaque ligne
+    say('Remplissage de la Feuil2…');
+    let ws2 = wb.getWorksheet('Feuil2') || wb.worksheets[1];
+    let model, rowH;
+    if (ws2 && ws2.getRow(2).hasValues){
+      const m = ws2.getRow(2);
+      const nCols = Math.max(ws2.getRow(1).cellCount, m.cellCount, 14);
+      model = Array.from({length:nCols}, (_, i) => ({v: m.getCell(i + 1).value, s: clone(m.getCell(i + 1).style)}));
+      rowH = m.height;
+      if (ws2.rowCount > 2) ws2.spliceRows(3, ws2.rowCount - 2);
+    } else {
+      ws2 = ws2 || wb.addWorksheet('Feuil2');
+      const base = {font:{name:'Arial',size:7,color:{argb:'FF16325C'}}};
+      S2_HEADERS.forEach((h, i) => { const c = ws2.getRow(1).getCell(i + 1); c.value = h; c.style = {font:{name:'Arial',size:7,bold:i < 4,color:{argb:'FF16325C'}}}; });
+      model = S2_DEFAULTS.map(v => ({v, s: clone(base)}));
+      model[0].s = {alignment:{wrapText:true,vertical:'top'}};
+      ws2.getColumn(1).width = 61; ws2.getColumn(2).width = 30; ws2.getColumn(3).width = 20; ws2.getColumn(4).width = 20; ws2.getColumn(15).width = 22;
+    }
+    results.forEach((desc, i) => {
+      const row = ws2.getRow(i + 2);
+      model.forEach((m, c) => { const cell = row.getCell(c + 1); cell.value = c === 0 ? desc : m.v; cell.style = clone(m.s); });
+      if (rowH) row.height = rowH;
+    });
+    el.fill.style.width = '92%'; await tick();
+
+    resultBuffer = await wb.xlsx.writeBuffer();
+    el.fill.style.width = '100%';
+
+    // Affichage
+    el.sRows.textContent = results.length; el.sErr.textContent = errCount; el.sSheet.textContent = results.length;
+    el.prev.textContent = results[0]; el.prev.classList.remove('empty');
+    el.dl.disabled = false;
+    say('Terminé : ' + results.length + ' descriptions générées. Vous pouvez télécharger le fichier.');
+  } catch (e){
+    console.error(e); say('Erreur : ' + e.message, true);
+  } finally {
+    el.run.disabled = false; el.clear.disabled = false;
+    setTimeout(() => el.bar.classList.remove('on'), 600);
+  }
+});
+
+/* ---------- Téléchargement ---------- */
+el.dl.addEventListener('click', () => {
+  if (!resultBuffer) return;
+  const blob = new Blob([resultBuffer], {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = outName; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+  say('Fichier téléchargé : ' + outName);
+});
+
+/* ---------- Effacer ---------- */
+function resetResult(){
+  el.sRows.textContent = el.sErr.textContent = el.sSheet.textContent = '0';
+  el.prev.textContent = 'Le texte généré apparaîtra ici après avoir cliqué sur Lancer.'; el.prev.classList.add('empty');
+  el.bar.classList.remove('on'); el.fill.style.width = '0%';
+}
+el.clear.addEventListener('click', () => {
+  source = null; resultBuffer = null; el.file.value = '';
+  el.info.classList.remove('on'); el.run.disabled = true; el.clear.disabled = true; el.dl.disabled = true;
+  resetResult(); say('');
+});
+</script>
+</body>
+</html>
